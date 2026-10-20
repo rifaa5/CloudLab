@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Third Party API Integration</title>
+</head>
+<body>
+
+    <h1>Third Party API Integration</h1>
+
+    <button onclick="getData()">Load Data</button>
+
+    <div id="data">Click the button to load data.</div>
+
+    <script>
+        const API_URL = "http://api.weatherstack.com/current?access_key=YOUR_ACCESS_KEY&query=New York";
+        const API_KEY = "536caef74402ebdbb40d794c686565e3";
+
+        async function getData() {
+            const container = document.getElementById("data");
+            container.textContent = "Loading...";
+
+            try {
+                
+                const separator = API_URL.includes("?") ? "&" : "?";
+
+                // if youre link has access_key=YOUR_ACCESS_KEY the put access_key else apikey 
+                const response = await fetch(
+                    `${API_URL}${separator}access_key=${API_KEY}`
+                );
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    container.textContent =
+                        "Error " + response.status + ": " +
+                        (result.message || JSON.stringify(result));
+                    return;
+                }
+
+                container.textContent =
+                    JSON.stringify(result, null, 2);
+
+            } catch (error) {
+                container.textContent = "Error: " + error.message;
+                console.error(error);
+            }
+        }
+    </script>
+
+</body>
+</html>

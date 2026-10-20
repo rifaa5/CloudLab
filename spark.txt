@@ -1,0 +1,43 @@
+java -version
+scala -version
+sudo apt-get update
+sudo apt-get install scala
+
+spark-shell
+cd ~/Downloads
+tar -xzf spark-<version>-bin-hadoop<version>.tgz
+
+
+export SPARK_HOME=/usr/local/spark
+export PATH="$PATH:$SPARK_HOME/bin"
+source ~/.bashrc
+spark-shell move into scala>
+
+:quit
+
+mkdir spark
+cd spark
+
+nano input.txt
+
+//some words
+
+spark-shell
+
+val inputfile = sc.textFile("input.txt")
+
+val words = inputfile.flatMap(line => line.split(" "))
+
+val pairs = words.map(word => (word, 1))
+
+val counts = pairs.reduceByKey(_ + _)
+
+counts.collect().foreach(println)
+
+counts.saveAsTextFile("output")
+
+:quit
+
+ls output
+cat output/part-*
+for removing old directory- rm -r output

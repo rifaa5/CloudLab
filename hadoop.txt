@@ -1,0 +1,208 @@
+# Install Java and SSH
+sudo apt update
+sudo apt install openjdk-11-jdk ssh -y
+
+# Download and extract Hadoop (if not already downloaded)
+cd ~/Downloads
+wget https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
+tar -xzf hadoop-3.3.6.tar.gz
+
+# Move Hadoop
+sudo mv hadoop-3.3.6 /usr/local/hadoop
+sudo chown -R $USER:$USER /usr/local/hadoop
+
+
+
+
+echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> ~/.bashrc
+echo 'export HADOOP_HOME=/usr/local/hadoop' >> ~/.bashrc
+echo 'export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop' >> ~/.bashrc
+echo 'export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin' >> ~/.bashrc
+
+source ~/.bashrc
+
+hadoop version
+
+
+
+ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+sudo service ssh start
+ssh localhost
+
+
+
+cd $HADOOP_HOME/etc/hadoop
+
+# Set Java path
+echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> hadoop-env.sh
+
+# Configure core-site.xml
+cat > core-site.xml <<'EOF'
+<?xml version="1.0"?>
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+EOF
+
+# Configure hdfs-site.xml
+cat > hdfs-site.xml <<EOF
+<?xml version="1.0"?>
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file://$HOME/hadoopdata/namenode</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file://$HOME/hadoopdata/datanode</value>
+    </property>
+</configuration>
+EOF
+
+# Configure MapReduce
+cp -n mapred-site.xml.template mapred-site.xml
+
+cat > mapred-site.xml <<'EOF'
+<?xml version="1.0"?>
+<configuration>
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+</configuration>
+EOF
+
+# Configure YARN
+cat > yarn-site.xml <<'EOF'
+<?xml version="1.0"?>
+<configuration>
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+</configuration>
+EOF
+
+
+
+mkdir -p ~/hadoopdata/namenode ~/hadoopdata/datanode
+
+hdfs namenode -format
+
+start-dfs.sh
+start-yarn.sh
+
+jps
+
+
+
+
+mkdir -p ~/wordcount
+cd ~/wordcount
+
+cat > input.txt <<'EOF'
+apple mango apple
+mango orange apple
+EOF
+
+
+
+
+cat > WordCount.java <<'EOF'
+import java.io.IOException;
+import java.util.StringTokenizer;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class WordCount {
+
+    public static class Map
+        extends Mapper<LongWritable, Text, Text, IntWritable> {
+
+        private final static IntWritable one = new IntWritable(1);
+        private Text word = new Text();
+
+        public void map(LongWritable key, Text value, Context context)
+            throws IOException, InterruptedException {
+
+            StringTokenizer itr = new StringTokenizer(value.toString());
+
+            while (itr.hasMoreTokens()) {
+                word.set(itr.nextToken());
+                context.write(word, one);
+            }
+        }
+    }
+
+    public static class Reduce
+        extends Reducer<Text, IntWritable, Text, IntWritable> {
+
+        public void reduce(Text key, Iterable<IntWritable> values,
+                           Context context)
+            throws IOException, InterruptedException {
+
+            int sum = 0;
+
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+
+            context.write(key, new IntWritable(sum));
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Word Count");
+
+        job.setJarByClass(WordCount.class);
+        job.setMapperClass(Map.class);
+        job.setReducerClass(Reduce.class);
+
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+EOF
+
+
+
+# Compile Java program
+javac -classpath "$(hadoop classpath)" WordCount.java
+
+# Create JAR file
+jar cf wordcount.jar WordCount*.class
+
+# Create HDFS input folder
+hdfs dfs -mkdir -p /input
+
+# Upload input file
+hdfs dfs -put -f input.txt /input/
+
+# Remove previous output if it exists
+hdfs dfs -rm -r -f /output
+
+# Run MapReduce program
+hadoop jar wordcount.jar WordCount /input/input.txt /output
+
+# Display result
+hdfs dfs -cat /output/part-r-00000
