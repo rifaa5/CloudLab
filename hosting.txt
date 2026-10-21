@@ -1,0 +1,41 @@
+cmd
+mkdir TechNetEvent
+cd TechNetEvent
+mkdir public
+
+public/index.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TechNet Event Information</title>
+</head>
+<body>
+    <h1>TechNet Event Information Page</h1>
+
+    <h2>About the Event</h2>
+    <p>Welcome to TechNet, a technical event for students.</p>
+
+    <h2>Event Details</h2>
+    <p>Date: 25 October 2026</p>
+    <p>Venue: College Auditorium</p>
+    <p>Time: 10:00 AM</p>
+
+    <h2>Activities</h2>
+    <ul>
+        <li>Paper Presentation</li>
+        <li>Web Development</li>
+        <li>Technical Quiz</li>
+        <li>Coding Competition</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>Email: technet@example.com</p>
+</body>
+</html>
+
+ cmd 
+ npm install -g firebase-tools
+ firebase login / firebase.cmd login
+ firebase.cmd init hosting
+ firebase.cmd deploy
