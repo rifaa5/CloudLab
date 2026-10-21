@@ -41,3 +41,47 @@ counts.saveAsTextFile("output")
 ls output
 cat output/part-*
 for removing old directory- rm -r output
+
+//shan Apache:
+
+java -version
+sudo apt-get update
+sudo apt-get install scala -y
+scala -version
+
+
+cd ~/Downloads
+wget https://archive.apache.org/dist/spark/spark-3.5.8/spark-3.5.8-bin-hadoop3.tgz
+tar -xzf spark-3.5.8-bin-hadoop3.tgz
+
+
+sudo mv spark-3.5.8-bin-hadoop3 /usr/local/spark
+echo 'export SPARK_HOME=/usr/local/spark' >> ~/.bashrc
+echo 'export PATH=$PATH:$SPARK_HOME/bin' >> ~/.bashrc
+source ~/.bashrc
+spark-shell
+:quit
+
+
+mkdir -p ~/spark
+cd ~/spark
+nano input.txt
+apache spark is fast
+spark is powerful
+apache spark is useful
+ctrl 0 enter ctrl x
+
+
+cat input.txt
+spark-shell
+val inputfile = sc.textFile("input.txt")
+val words = inputfile.flatMap(line => line.split(" "))
+val pairs = words.map(word => (word, 1))
+val counts = pairs.reduceByKey(_ + _)
+counts.collect().foreach(println)
+
+counts.saveAsTextFile("output")
+:quit
+ls output
+cat output/part-*
+

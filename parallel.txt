@@ -94,3 +94,99 @@ int main(int argc, char *argv[]) {
 
 mpicc hello.c -o hello
 mpirun -np 4 ./hello
+
+
+// shan 
+
+
+open mp
+
+sudo apt update
+sudo apt install -y gcc build-essential
+
+
+mkdir -p ~/openmp_lab
+cd ~/openmp_lab
+
+nano greatest.c
+
+#include <stdio.h>
+#include <omp.h>
+
+int main() {
+    int a[50];
+    int max = -1000000;
+
+    for (int i = 0; i < 50; i++) {
+        a[i] = (i * 7 + 13) % 100;
+    }
+
+    #pragma omp parallel for reduction(max:max)
+    for (int i = 0; i < 50; i++) {
+        if (a[i] > max) {
+            max = a[i];
+        }
+    }
+
+    printf("Greatest number = %d\n", max);
+
+    return 0;
+}
+
+gcc -fopenmp greatest.c -o greatest
+
+./greatest
+
+
+sudo apt update
+sudo apt install -y gcc build-essential openmpi-bin libopenmpi-dev
+
+
+mkdir -p ~/mpi_lab
+cd ~/mpi_lab
+
+nano greatest.c
+
+#include <stdio.h>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int a[50];
+    int local_max = -1000000;
+    int global_max;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    for (int i = 0; i < 50; i++) {
+        a[i] = (i * 7 + 13) % 100;
+    }
+
+    int start = rank * 50 / size;
+    int end = (rank + 1) * 50 / size;
+
+    for (int i = start; i < end; i++) {
+        if (a[i] > local_max) {
+            local_max = a[i];
+        }
+    }
+
+    MPI_Reduce(&local_max, &global_max, 1, MPI_INT,
+               MPI_MAX, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        printf("Greatest number = %d\n", global_max);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+
+mpicc greatest.c -o greatest
+
+mpirun --oversubscribe -np 4 ./greatest
+
+
